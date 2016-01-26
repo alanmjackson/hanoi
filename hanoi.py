@@ -241,9 +241,63 @@ def show_banner(ui):
     ui.screen.refresh()
 
 
+def show_splash_screen(screen):
+
+    splash_screen = screen.subwin(20, 55, 2, 5)
+
+    left = 2
+    splash_screen.addstr(1, left, "Hanoi".center(50))
+    splash_screen.addstr(10, left, "Move the discs from the left to the right tower.".center(50))
+    splash_screen.addstr(11, left, "You can't put a big disc on top of a smaller one.".center(50))
+    splash_screen.addstr(13, left, "Use LEFT and RIGHT arrow keys to select a tower.".center(50))
+    splash_screen.addstr(14, left, "Use UP and DOWN to pick up and place a disc.".center(50))
+    splash_screen.addstr(17, left, "Press any key to continue...".center(50))
+
+    splash_screen.border()
+
+
+    #Mucking about trying out different curses lines
+    x = 12
+    y = 4
+    splash_screen.addch(y,    x+2, curses.ACS_PLUS)
+    splash_screen.addch(y+1,  x+2, curses.ACS_PLUS)
+    splash_screen.addch(y+1,  x+1, curses.ACS_HLINE)
+    splash_screen.addch(y+1,  x+3, curses.ACS_HLINE)
+    splash_screen.addch(y+2,  x+2, curses.ACS_BTEE)
+    splash_screen.addch(y+2,  x,   curses.ACS_HLINE)
+    splash_screen.addch(y+2,  x+1, curses.ACS_HLINE)
+    splash_screen.addch(y+2,  x+3, curses.ACS_HLINE)
+    splash_screen.addch(y+2,  x+4, curses.ACS_HLINE)
+
+    x = 24
+    splash_screen.addch(y,   x+2, curses.ACS_VLINE)
+    splash_screen.addch(y+1, x+2, curses.ACS_VLINE)
+    splash_screen.addch(y+2, x+2, curses.ACS_BTEE)
+    splash_screen.addch(y+2, x,   curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+1, curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+3, curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+4, curses.ACS_HLINE)
+
+    x = 36
+    splash_screen.addch(y,   x+2, curses.ACS_VLINE)
+    splash_screen.addch(y+1, x+2, curses.ACS_VLINE)
+    splash_screen.addch(y+2, x+2, curses.ACS_BTEE)
+    splash_screen.addch(y+2, x,   curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+1, curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+3, curses.ACS_HLINE)
+    splash_screen.addch(y+2, x+4, curses.ACS_HLINE)
+
+
+
+    screen.getch()
+    screen.clear()
+    screen.refresh()
+
+
 def main(stdscr):
 
     curses.curs_set(0)
+    show_splash_screen(stdscr)
 
     game = Game()
     ui = GameUI(stdscr, game)
