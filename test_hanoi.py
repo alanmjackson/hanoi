@@ -52,8 +52,40 @@ class Test(unittest.TestCase):
         game = hanoi.Game(2, 1)
 
         game.move(0, 1)
-
         self.assertTrue(game.won)
+
+        #Test that you only win if you get all the rings to the farthest tower.
+        game = hanoi.Game(3, 2)
+        game.move(0, 2)
+        game.move(0, 1)
+        game.move(2, 1)
+        self.assertTrue(game.won == False)  #All rings are on the middle tower
+
+        game = hanoi.Game(3, 2)
+        game.move(0, 1)
+        game.move(0, 2)
+        game.move(1, 2)
+        self.assertTrue(game.won)   #All rings on the farthest tower.
+
+
+
+    def test_get_top_ring(self):
+
+        game = hanoi.Game()
+
+        ring = game.get_top_ring(0) # What is the top ring on tower 0?
+        self.assertTrue(ring == 1)
+
+        ring = game.get_top_ring(1) 
+        self.assertTrue(ring == None)        
+
+        game.move(0,2)
+
+        ring = game.get_top_ring(0) # What is the top ring on tower 0 now?
+        self.assertTrue(ring == 2)
+
+
+
 
 
 
