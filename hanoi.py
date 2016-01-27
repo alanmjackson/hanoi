@@ -7,9 +7,11 @@ A version of the Towers of Hanoi puzzle
 
 import curses
 import curses.textpad
+import argparse
 
 _DEFAULT_TOWERS = 3
 _DEFAULT_RINGS = 5
+_DEFAULT_SETS = 1
 
 DOWN_KEY = 258
 UP_KEY = 259
@@ -29,7 +31,7 @@ BLACK_ON_BLACK = 2
 #The Model in an MVC pattern - can be used without a view, implements the game logic.
 class Game:
 
-    def __init__(self, towers=_DEFAULT_TOWERS, rings=_DEFAULT_RINGS):
+    def __init__(self, towers=_DEFAULT_TOWERS, rings=_DEFAULT_RINGS, sets=_DEFAULT_SETS):
 
         self.towers = towers
         self.rings = rings
@@ -40,20 +42,36 @@ class Game:
             self.board[0].append(i)
 
 
+    def valid_move(self, source_tower, destination_tower):
+
+        #It's valid to move a ring to an empty tower
+        if len(self.board[destination_tower]) == 0:
+            return True
+
+        #You can't put a ring on top of a smaller one
+        if self.board[source_tower][0] > self.board[destination_tower][0]:
+            raise ValueError("Cannot put a ring on top of a smaller ring.")
+
+        return True
+
+
+    def winning_condition(self):
+
+        if len(self.board[self.towers - 1]) == self.rings:
+            return True
+
+
     def move(self, source_tower, destination_tower):
 
+        #If the source is the same as the desitination don't bother doing anything
         if source_tower != destination_tower:
 
-            if len(self.board[destination_tower]) == 0 or \
-                self.board[source_tower][0] < self.board[destination_tower][0]:
+            if self.valid_move(source_tower, destination_tower):
 
                 ring = self.board[source_tower].pop(0)
                 self.board[destination_tower].insert(0, ring)
 
-            else:
-                raise ValueError("Cannot put a ring on top of a smaller ring.")
-
-            if destination_tower == self.towers - 1 and len(self.board[destination_tower]) == self.rings:
+            if self.winning_condition():
                 self.won = True
 
 
@@ -70,8 +88,8 @@ class Game:
 class GameView:
 
     top_margin = 2
-    left_margin = 10
-    tower_margin = 5        #The space between towers
+    left_margin = 2
+    min_tower_margin = 2        #The space between towers
     selection_margin = 1
     pillar_extension = 1    #Height that the pillar extends above the top ring.
     base_extension = 1      #The width the base extends wider than the largest ring on each side.
@@ -82,18 +100,25 @@ class GameView:
 
     def __init__(self, screen, game, debug=True):
 
-        #Set up colours
+        #Set up curses
+        curses.curs_set(0)
         curses.init_pair(1, curses.COLOR_RED, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_BLACK)
 
+        self.screen_height, self.screen_width = screen.getmaxyx()
+
         self.rings = game.rings
+        self.towers = game.towers
         self.tower_width = game.rings * GameView.ring_scaling + 1 + \
             (GameView.min_ring_width - 3) + GameView.base_extension * 2
 
-        self.board_width = game.towers * self.tower_width
+        tower_widths = game.towers * self.tower_width
+        self.tower_margin = max(int(((self.screen_width - tower_widths) / (self.towers - 1)) / 2), 
+            self.min_tower_margin)
+
+        self.board_width = tower_widths + (game.towers - 1) * self.tower_margin
         self.screen = screen
         self.current_tower = 0
-        self.screen_height, self.screen_width = screen.getmaxyx()
         self.__DEBUG_SCR = screen.subwin(self.screen_height - 12, 0)
 
         x = GameView.left_margin
@@ -255,7 +280,7 @@ class GameView:
     def get_tower_bounding_box(self, tower_index):
         #Coords of top left of bounding box
         tl_y = self.tower_box[T][Y]
-        tl_x = self.tower_box[T][X] + tower_index * (self.tower_width + GameView.tower_margin)
+        tl_x = self.tower_box[T][X] + tower_index * (self.tower_width + self.tower_margin)
 
         #Coords of bottom right of bounding box
         br_y = tl_y + self.rings * GameView.ring_height + GameView.pillar_extension
@@ -343,7 +368,7 @@ class GameView:
 
             ring_width = self.ring_width(ring)
 
-            margin = int((self.board_width - ring_width) / 2 )
+            margin = int((self.board_width - ring_width) / 2 ) + 1
 
             y = int( (self.ring_box[T][Y] + self.ring_box[B][Y] - self.ring_height) / 2 )
             x = self.ring_box[T][X] + margin
@@ -420,15 +445,26 @@ class GameView:
 
 
 #The Controller in an MVC pattern. 
-def main(stdscr):
+def main(stdscr, args):
 
-    curses.curs_set(0)
+    game_kwargs = {}
+    distribution = 0.75
 
-    game = Game()
+    if args.towers != None:
+        game_kwargs['towers'] = args.towers
+
+    if args.rings != None:
+        game_kwargs['rings'] = args.rings
+
+    if args.sets != None:
+        game_kwargs['sets'] = args.sets
+
+
+    game = Game(**game_kwargs)
     ui = GameView(stdscr, game)
 
-    ui.show_splash_screen()
-    #ui.show_test_screen()
+    if not args.quiet:
+        ui.show_splash_screen()
 
     while not game.won:
         ui.show_board(game)
@@ -449,4 +485,12 @@ def main(stdscr):
 
 
 if __name__ == '__main__':
-    curses.wrapper(main)
+    argparser = argparse.ArgumentParser(description='A game of moving rings on towers.')
+    argparser.add_argument('-t', '--towers', type=int)
+    argparser.add_argument('-r', '--rings', type=int)
+    argparser.add_argument('-s', '--sets', type=int)
+    argparser.add_argument('-q', '--quiet', action='store_true')
+
+    args = argparser.parse_args()
+
+    curses.wrapper(main, args)

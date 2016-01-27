@@ -32,6 +32,7 @@ class Test(unittest.TestCase):
 
 
     def test_illegal_move(self):
+        #game should raise a ValueError for an illegal move.
 
         game = hanoi.Game()
 
@@ -85,6 +86,12 @@ class Test(unittest.TestCase):
         self.assertTrue(ring == 2)
 
 
+    def test_create_multiple_sets_game(self):
+
+        game = hanoi.Game(sets = 2)
+
+        self.assertTrue(len(game.board[0]) == game.rings)
+        self.assertTrue(len(game.board[game.towers - 1]) == game.rings)
 
 
 
