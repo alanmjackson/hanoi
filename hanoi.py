@@ -229,15 +229,20 @@ class GameView:
     def show_splash_screen(self):
         screen = self.screen
 
-        msg_box = screen.subwin(20, 55, GameView.top_margin, GameView.left_margin)
+        msg_box = screen.subwin(22, 55, GameView.top_margin, GameView.left_margin)
 
         left = 2
         msg_box.addstr(1, left, "Hanoi".center(50))
-        msg_box.addstr(10, left, "Move the discs from the left to the right tower.".center(50))
+        msg_box.addstr(10, left, "Move the discs in to the winning position.".center(50))
         msg_box.addstr(11, left, "You can't put a big disc on top of a smaller one.".center(50))
+        
         msg_box.addstr(13, left, "Use LEFT and RIGHT arrow keys to select a tower.".center(50))
         msg_box.addstr(14, left, "Use UP and DOWN to pick up and place a disc.".center(50))
-        msg_box.addstr(17, left, "Press any key to continue...".center(50))
+
+        msg_box.addstr(16, left, "Press W to see the winning position.".center(50))
+        msg_box.addstr(17, left, "Press A to repeat the last move.".center(50))
+
+        msg_box.addstr(19, left, "Press any key to continue...".center(50))
 
         msg_box.border()
 
@@ -474,7 +479,7 @@ class GameView:
                 self.show_winning_state(game)
                 self.show_board(game.board)
 
-            elif command_chr == ord("a"):
+            elif command_chr == DOWN_KEY or command_chr == ord("j") or command_chr == ord("a"):
 
                 if self.previous_move != None:
                     return self.previous_move
@@ -484,7 +489,7 @@ class GameView:
         while destination_tower == None:
 
             command_chr = self.screen.getch()
-            if command_chr == DOWN_KEY or command_chr == ord("j"):
+            if command_chr == DOWN_KEY or command_chr == ord("j") or command_chr == ord("a"):
                 destination_tower = self.current_tower
                 self.show_selected_ring(None)
 
@@ -516,7 +521,7 @@ class GameView:
     def show_winning_state(self, game):
 
         banner_text = self.banner_text
-        self.banner_text = "Winning Condition"
+        self.banner_text = "Winning Position"
         self.show_board(game.winning_state)
         self.pause()
         self.banner_text = banner_text
