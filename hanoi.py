@@ -177,7 +177,7 @@ class GameView:
         self.select_box =((self.tower_box[B][Y], x), (self.tower_box[B][Y] + 3, x + self.board_width)) 
 
         self.__debug = debug
-
+        self.previous_move = None
 
 
 
@@ -474,6 +474,11 @@ class GameView:
                 self.show_winning_state(game)
                 self.show_board(game.board)
 
+            elif command_chr == ord("a"):
+
+                if self.previous_move != None:
+                    return self.previous_move
+
 
         destination_tower = None
         while destination_tower == None:
@@ -504,7 +509,7 @@ class GameView:
                 self.show_selected_ring(game.get_top_ring(source_tower))
                 self.hide_top_ring(game, source_tower)
 
-
+        self.previous_move = (source_tower, destination_tower)
         return (source_tower, destination_tower)
 
 
