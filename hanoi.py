@@ -49,6 +49,7 @@ class Game:
         self.sets = sets
         self.board = [[] for x in range(self.towers)]
         self.winning_state = [[] for x in range(self.towers)]
+        self.moves = 0
 
         #The first tower has a set
         towers_with_sets = [0]
@@ -76,6 +77,10 @@ class Game:
 
     def valid_move(self, source_tower, destination_tower):
 
+        #You can't move a ring from an empty tower
+        if len(self.board[source_tower]) == 0:
+            raise ValueError("Cannot move a ring from an empty tower.")
+
         #It's valid to move a ring to an empty tower
         if len(self.board[destination_tower]) == 0:
             return True
@@ -83,6 +88,7 @@ class Game:
         #You can't put a ring on top of a smaller one
         if self.board[source_tower][0][0] > self.board[destination_tower][0][0]:
             raise ValueError("Cannot put a ring on top of a smaller ring.")
+
 
         return True
 
@@ -102,6 +108,7 @@ class Game:
 
                 ring = self.board[source_tower].pop(0)
                 self.board[destination_tower].insert(0, ring)
+                self.moves += 1
 
             if self.winning_condition():
                 self.won = True
@@ -128,6 +135,7 @@ class GameView:
     min_ring_width = 5      #Width of the smallest ring
     ring_scaling = 2
     ring_height = 1
+    score_width = 12
 
 
     def __init__(self, screen, game, debug=True):
@@ -166,7 +174,7 @@ class GameView:
 
         self.tower_height = game.rings * self.ring_height * game.sets  \
                             - (game.sets - 1) \
-                            + self.pillar_extension - 1 
+                            + self.pillar_extension
         
         self.tower_box = ((self.ring_box[B][Y] + GameView.selection_margin, 
                            x + GameView.selection_margin), 
@@ -189,9 +197,9 @@ class GameView:
     def show_message_box(self, message):
 
         y = GameView.top_margin
-        x = GameView.left_margin
+        x = max(GameView.left_margin, self.score_width)
         height = 3
-        width = 50
+        width = self.board_width - (2 * x)
 
         msg_screen = self.screen.derwin(height, width, y, x)
 
@@ -320,7 +328,19 @@ class GameView:
         screen.refresh()
 
 
+    def show_score(self, game):
+        self.screen.addstr(self.banner_box[T][Y] + 1, self.banner_box[B][X] - self.score_width,
+                           "moves: " + str(game.moves))
+        self.screen.refresh()
+
+
     def show_banner(self):
+
+        #clear the area
+        for y in range(self.banner_box[T][Y], self.banner_box[B][Y]):
+            self.screen.move(y, 0)
+            self.screen.clrtoeol()
+
         self.screen.addstr(self.banner_box[T][Y], self.banner_box[T][X], 
                            self.banner_text.center(self.board_width))
         self.screen.refresh()
@@ -343,7 +363,7 @@ class GameView:
         tl_y, tl_x, br_y, br_x = self.get_tower_bounding_box(tower_index)
 
         x_mid = tl_x + int(self.tower_width / 2)
-        pillar_height = br_y - tl_y
+        pillar_height = self.tower_height
 
 
         #clear the area
@@ -352,6 +372,7 @@ class GameView:
 
         #plot the base
         self.screen.hline(br_y, tl_x, curses.ACS_HLINE, self.tower_width)
+        self.screen.addch(br_y, x_mid, curses.ACS_BTEE)
 
         #plot the rings
         rev_rings = rings[::-1]
@@ -372,7 +393,6 @@ class GameView:
         for i in range(pillar_height - (len(rings) * GameView.ring_height)):
             self.screen.addch(tl_y + i, x_mid, curses.ACS_VLINE)
 
-        self.screen.addch(tl_y + i + 1, x_mid, curses.ACS_BTEE)
 
 
     def ring_width(self, ring_value):
@@ -380,15 +400,28 @@ class GameView:
         return ring_value * GameView.ring_scaling + 1 + (GameView.min_ring_width - 3)
 
 
-    def show_board(self, board):
+    def show_towers(self, board):
 
-        self.screen.clear()
-        self.show_banner()
+        #clear the area
+        for y in range(self.tower_box[T][Y], self.tower_box[B][Y]):
+            self.screen.move(y, 0)
+            self.screen.clrtoeol()
 
         for i in range(len(board)):
             self.show_tower(board[i], i)
 
         self.screen.refresh()
+
+
+    def show_board(self, game):
+        """Repaint the whole board screen"""
+
+        self.screen.clear()
+        self.show_banner()
+        self.show_score(game)
+        self.show_towers(game.board)
+        self.screen.refresh()
+
 
 
 
@@ -477,7 +510,7 @@ class GameView:
             elif command_chr == ord("w"):
 
                 self.show_winning_state(game)
-                self.show_board(game.board)
+                self.show_board(game)
 
             elif command_chr == DOWN_KEY or command_chr == ord("j") or command_chr == ord("a"):
 
@@ -510,7 +543,7 @@ class GameView:
             elif command_chr == ord("w"):
 
                 self.show_winning_state(game)
-                self.show_board(game.board)
+                self.show_board(game)
                 self.show_selected_ring(game.get_top_ring(source_tower))
                 self.hide_top_ring(game, source_tower)
 
@@ -520,9 +553,10 @@ class GameView:
 
     def show_winning_state(self, game):
 
+        self.show_towers(game.winning_state)
         banner_text = self.banner_text
         self.banner_text = "Winning Position"
-        self.show_board(game.winning_state)
+        self.show_banner()
         self.pause()
         self.banner_text = banner_text
 
@@ -554,7 +588,7 @@ def main(stdscr, args):
         ui.show_winning_state(game)
 
     while not game.won:
-        ui.show_board(game.board)
+        ui.show_board(game)
 
         source_tower, destination_tower = ui.input_move(game)
 
@@ -564,8 +598,7 @@ def main(stdscr, args):
             ui.show_message_box(str(e))
             ui.pause()
 
-    ui.show_board(game.board)
-
+    ui.show_board(game)
 
     ui.show_message_box("You Won")
     ui.pause()
