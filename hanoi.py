@@ -469,6 +469,12 @@ class GameView:
                     self.highlight_tower(game, self.current_tower)
 
 
+            elif command_chr == ord("w"):
+
+                self.show_winning_state(game)
+                self.show_board(game.board)
+
+
         destination_tower = None
         while destination_tower == None:
 
@@ -491,7 +497,24 @@ class GameView:
                     self.current_tower += 1
                     self.highlight_tower(game, self.current_tower)
 
+            elif command_chr == ord("w"):
+
+                self.show_winning_state(game)
+                self.show_board(game.board)
+                self.show_selected_ring(game.get_top_ring(source_tower))
+                self.hide_top_ring(game, source_tower)
+
+
         return (source_tower, destination_tower)
+
+
+    def show_winning_state(self, game):
+
+        banner_text = self.banner_text
+        self.banner_text = "Winning Condition"
+        self.show_board(game.winning_state)
+        self.pause()
+        self.banner_text = banner_text
 
 
 
@@ -518,11 +541,7 @@ def main(stdscr, args):
 
     if not args.quiet:
         ui.show_splash_screen()
-        banner_text = ui.banner_text
-        ui.banner_text = "Winning Condition"
-        ui.show_board(game.winning_state)
-        ui.pause()
-        ui.banner_text = banner_text
+        ui.show_winning_state(game)
 
     while not game.won:
         ui.show_board(game.board)
