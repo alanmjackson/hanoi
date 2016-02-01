@@ -5,6 +5,8 @@ A version of the Towers of Hanoi puzzle
 """
 
 
+import copy
+import random
 import curses
 import curses.textpad
 import argparse
@@ -36,7 +38,8 @@ BLACK_ON_BLACK = 7
 #The Model in an MVC pattern - can be used without a view, implements the game logic.
 class Game:
 
-    def __init__(self, towers=_DEFAULT_TOWERS, rings=_DEFAULT_RINGS, sets=_DEFAULT_SETS):
+    def __init__(self, towers=_DEFAULT_TOWERS, rings=_DEFAULT_RINGS, sets=_DEFAULT_SETS,
+                 start_position=None, winning_position=None, randomize=False):
 
         if sets > towers:
             raise ValueError("Can't have more sets than towers.")
@@ -48,31 +51,110 @@ class Game:
         self.rings = rings
         self.sets = sets
         self.board = [[] for x in range(self.towers)]
-        self.winning_state = [[] for x in range(self.towers)]
+        self.winning_position = [[] for x in range(self.towers)]
         self.moves = 0
 
-        #The first tower has a set
-        towers_with_sets = [0]
+        #create the starting position of the board
+        if start_position == None:
+            #The first tower has a set
+            towers_with_sets = [0]
 
-        #The next set goes on the last tower
-        if sets > 1:
-            towers_with_sets.append(towers - 1)
+            #The next set goes on the last tower
+            if sets > 1:
+                towers_with_sets.append(towers - 1)
 
-        #Put the next sets on the towers in order
-        if sets > 2:
-            for i in range(1, sets - 1):
-                towers_with_sets.append(i)
+            #Put the next sets on the towers in order
+            if sets > 2:
+                for i in range(1, sets - 1):
+                    towers_with_sets.append(i)
 
-        set = 0
-        for tower in towers_with_sets:
-            for i in range(1, self.rings + 1):
-                self.board[tower].append([i, set])
+            set = 0
+            for tower in towers_with_sets:
+                for i in range(1, self.rings + 1):
+                    self.board[tower].append([i, set])
 
-                #reverse the order of the towers for the winning state. 
-                self.winning_state[self.towers - 1 - tower].append([i, set])
-            set += 1
+                set += 1
+        else:
+            self.board = start_position
 
-        self.won = False
+            #count the towers rings and sets of the board
+            self.towers = self.count_towers(self.board)
+            self.rings = self.count_rings(self.board)
+            self.sets = self.count_sets(self.board)
+
+
+        #Create the winning position. 
+        #The winning position is based on the starting position before it's randomized.
+        if winning_position == None:
+            self.winning_position = copy.deepcopy(self.board)
+
+            if self.sets % 2 == 0:
+                self.winning_position.reverse()
+            else:
+                self.winning_position = self.rotate_board(self.winning_position)
+        else:
+            self.winning_position = winning_position
+
+
+        if randomize:
+            #group the rings by ring size
+            rings = {}
+            for tower in self.board:
+                for ring in tower:
+                    if ring[0] in rings:
+                        rings[ring[0]].append(ring)
+                    else:
+                        rings[ring[0]] = [ring]
+
+            #clear the board
+            self.board = [[] for x in range(len(self.board))]
+
+            #Randomly place rings on the board starting with the largest
+            keys = list(rings)
+            keys.sort(reverse=True)
+            for key in keys:
+                same_sized_rings = rings[key]
+                for ring in same_sized_rings:
+                    self.board[random.randint(0, len(self.board) - 1)].insert(0, ring)
+
+
+        #storing the start position to allow replay... don't need this yet. 
+        #self.start_position = copy.deepcopy(self.board)
+
+        self.won = self.winning_condition()
+
+
+
+    def count_towers(self, board):
+        return len(board)
+
+
+    def count_rings(self, board):
+        rings = 0
+        for tower in board:
+            rings += len(tower)
+
+        return rings
+
+
+    def count_sets(self, board):
+        sets = {}
+        for tower in board:
+            for ring in tower:
+                sets[ring[1]] = True
+
+        return len(sets)
+
+
+    def rotate_board(self, board):
+        """Rotates the board by shuffling all the towers one position to the left
+        and appends the first column on the end."""
+
+        head = board[0]
+        board = board[1:]   #this is doing a shallow copy so we need to return board.
+        board.append(head)
+
+        return board
 
 
     def valid_move(self, source_tower, destination_tower):
@@ -95,8 +177,8 @@ class Game:
 
     def winning_condition(self):
 
-        if self.board == self.winning_state:
-            return True
+        return self.board == self.winning_position
+            
 
 
     def move(self, source_tower, destination_tower):
@@ -146,7 +228,7 @@ class GameView:
         curses.init_pair(BLUE_ON_BLACK,    curses.COLOR_BLUE,    curses.COLOR_BLACK)
         curses.init_pair(CYAN_ON_BLACK,    curses.COLOR_CYAN,    curses.COLOR_BLACK)
         curses.init_pair(MAGENTA_ON_BLACK, curses.COLOR_MAGENTA, curses.COLOR_BLACK)
-        self.ring_colours = 6
+        self.ring_colours = 7
 
         curses.init_pair(RED_ON_BLACK,     curses.COLOR_RED,     curses.COLOR_BLACK)
         curses.init_pair(BLACK_ON_BLACK,   curses.COLOR_BLACK,   curses.COLOR_BLACK)
@@ -509,7 +591,7 @@ class GameView:
 
             elif command_chr == ord("w"):
 
-                self.show_winning_state(game)
+                self.show_winning_position(game)
                 self.show_board(game)
 
             elif command_chr == DOWN_KEY or command_chr == ord("j") or command_chr == ord("a"):
@@ -542,7 +624,7 @@ class GameView:
 
             elif command_chr == ord("w"):
 
-                self.show_winning_state(game)
+                self.show_winning_position(game)
                 self.show_board(game)
                 self.show_selected_ring(game.get_top_ring(source_tower))
                 self.hide_top_ring(game, source_tower)
@@ -551,9 +633,9 @@ class GameView:
         return (source_tower, destination_tower)
 
 
-    def show_winning_state(self, game):
+    def show_winning_position(self, game):
 
-        self.show_towers(game.winning_state)
+        self.show_towers(game.winning_position)
         banner_text = self.banner_text
         self.banner_text = "Winning Position"
         self.show_banner()
@@ -579,13 +661,16 @@ def main(stdscr, args):
     if args.sets != None:
         game_kwargs['sets'] = args.sets
 
+    if args.randomize:
+        game_kwargs['randomize'] = True
 
     game = Game(**game_kwargs)
     ui = GameView(stdscr, game)
 
+
     if not args.quiet:
         ui.show_splash_screen()
-        ui.show_winning_state(game)
+        ui.show_winning_position(game)
 
     while not game.won:
         ui.show_board(game)
@@ -610,6 +695,7 @@ if __name__ == '__main__':
     argparser.add_argument('-r', '--rings', type=int)
     argparser.add_argument('-s', '--sets', type=int)
     argparser.add_argument('-q', '--quiet', action='store_true')
+    argparser.add_argument('-z', '--randomize', action='store_true')
 
     args = argparser.parse_args()
 
